@@ -1,0 +1,181 @@
+@import url("https://fonts.googleapis.com/css?family=Glegoo|Open+Sans|Ubuntu+Mono&display=swap");
+
+/* GENERAL */
+
+* {
+    position: relative;
+    margin: 0px;
+    padding: 0px;
+}
+
+body {
+    background-color: #222;
+    font-family: 'Open Sans', sans-serif;
+    font-size: 16px;
+    color: #bbb;
+    line-height: 1.6;
+}
+
+span.spacer {
+    margin: 0px auto;
+}
+
+/* HEADER */
+
+header {
+    background-color: #444;
+    position: fixed;
+    z-index: 100;
+    width: 100%;
+    height: 56px;
+    border-bottom: 1px solid #777;
+}
+
+nav {
+    max-width: 840px;
+    height: 100%;
+    margin: 0px auto;
+    display: flex;
+    justify-content: left;
+    align-items: center;
+}
+
+a.navlink {
+    height: 56px;
+    padding: 0px 15px;
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    color: #ccc;
+    font-size: 20px;
+    white-space: nowrap;
+}
+
+a.navlink:hover {
+    color: #fff;
+    text-decoration: none;
+}
+
+a.navtitlelink {
+    color: #0b3;
+    font-family: 'Glegoo', serif;
+    font-size: 24px;
+    white-space: nowrap;
+}
+
+a.navtitlelink:hover {
+    color: #0d4;
+}
+
+a.iconlink {
+    padding: 0px 8px;
+    display: flex;
+    align-items: center;
+}
+
+/* CONTENT */
+
+main {
+    top: 56px;
+    max-width: 840px;
+    margin: 0px auto;
+    padding: 0px 28px;
+    overflow: hidden;
+}
+
+h1, h2, h3 {
+    font-family: 'Glegoo', serif;
+    color: #ccc;
+    margin: 20px 0px;
+}
+
+p {
+    margin: 20px 0px;
+}
+
+li {
+    padding-left: 5px;
+    margin-left: 36px;
+}
+
+strong {
+    color: #ccc;
+}
+
+em {
+    color: #ccc;
+}
+
+pre {
+    background-color: #333;
+    margin: 20px 0px;
+    padding: 10px 20px;
+    border-left: 5px solid #0b3;
+    border-radius: 5px;
+    line-height: 1.2;
+}
+
+code {
+    font-family: 'Ubuntu Mono', monospace;
+    color: #ddd;
+}
+
+blockquote {
+    padding-left: 36px;
+    font-style: italic;
+}
+
+a {
+    color: #0b3;
+    text-decoration: none;
+}
+
+a:hover {
+    color: #0d4;
+    text-decoration: underline;
+}
+
+main img {
+    width: 100%;
+    margin: 10px 0px;
+}
+
+main img[src*="full"] {
+    width: 100%;
+    margin: 10px 0px;
+}
+
+main img[src*="half"] {
+    width: 50%;
+    margin: 10px 25%;
+}
+
+table, th, td {
+    border: 1px solid #666;
+    padding: 5px 15px;
+}
+
+table {
+    border-collapse: collapse;
+    margin: 15px auto;
+}
+
+th {
+    background-color: #333;
+}
+
+hr {
+    border: 0px;
+    height: 1px;
+    background-color: #666;
+}
+
+section.item {
+    display: flex;
+    justify-content: left;
+    align-items: flex-start;
+}
+
+img.itemthumbnail {
+    width: 360px;
+}
