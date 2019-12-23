@@ -1,6 +1,15 @@
 {% include upper.html %}
-<h1>Blog Posts</h1>
+{{ content }}
 {% for post in site.posts %}
-    <a href="{{ post.url }}">{{ post.title }}</a>
+    {% if post.category contains "blogpost" %}
+    <a class="itemlink"href="{{ post.url }}"><section class="item">
+        <img class="itemthumbnail" src="{{ post.thumbnail }}" />
+        <div>
+            <h2 class="itemtitle">{{ post.title }}</h2>
+            <p class="itemdate">{{ post.date | date: "%B %-d, %Y" }}</p>
+            <p class="itemdescription">{{ post.description }}</p>
+        </div>
+    </section></a>
+    {% endif %}
 {% endfor %}
 {% include lower.html %}

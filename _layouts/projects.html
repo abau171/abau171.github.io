@@ -1,3 +1,16 @@
 {% include upper.html %}
-<h1>Projects</h1>
+{{ content }}
+{% for post in site.posts %}
+    {% if post.category contains "project" %}
+    <a class="itemlink"href="{{ post.url }}"><section class="item">
+        {% if post.thumbnail %}
+        <img class="itemthumbnail" src="{{ post.thumbnail }}" />
+        {% endif %}
+        <div class="itemtext">
+            <h2 class="itemtitle">{{ post.title }}{% if post.subtitle %}<span class="itemsubtitle"> &nbsp;&nbsp; {{ post.subtitle }}</span>{% endif %}</h2>
+            <p class="itemdescription">{{ post.description }}</p>
+        </div>
+    </section></a>
+    {% endif %}
+{% endfor %}
 {% include lower.html %}
