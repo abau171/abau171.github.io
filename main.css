@@ -126,8 +126,12 @@ main {
 
 h1, h2, h3 {
     font-family: 'Glegoo', serif;
-    color: #ccc;
+    color: #eee;
     margin: 20px 0px;
+}
+
+h3 {
+    font-weight: normal;
 }
 
 p {
@@ -221,9 +225,17 @@ img.itemthumbnail {
     width: 360px;
 }
 
+.embedvideo {
+    width: 560px;
+    height: 315px;
+}
+
 @media (max-width: 640px) {
     main {
         top: 0px;
+    }
+    .embedvideo {
+        width: 100%;
     }
 }
 
