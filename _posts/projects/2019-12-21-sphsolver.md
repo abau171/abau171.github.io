@@ -13,7 +13,7 @@ This is a fluid simulation project I built for UCSD's CSE 291 course in Physics 
 ## Features
 
 - uniform grid spatial acceleration structure
-- optional incompressibility constraint using (PCISPH)[https://people.inf.ethz.ch/~sobarbar/papers/Sol09/Sol09.pdf]
+- optional incompressibility constraint using [PCISPH](https://people.inf.ethz.ch/~sobarbar/papers/Sol09/Sol09.pdf)
 - meshing using [Marching Cubes](https://en.wikipedia.org/wiki/Marching_cubes)
 - real-time viewer with interactive fluid properties
 - Wavefront .obj mesh exporter
