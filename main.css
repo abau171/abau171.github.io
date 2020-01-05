@@ -119,8 +119,8 @@ svg.navicon {
 main {
     top: 56px;
     max-width: 840px;
-    margin: 0px auto 50px auto;
-    padding: 0px 28px;
+    margin: 0px auto;
+    padding: 0px 28px 50px 28px;
     overflow: hidden;
 }
 
@@ -223,6 +223,7 @@ section.item {
 
 img.itemthumbnail {
     width: 360px;
+    flex-shrink: 0;
 }
 
 .embedvideo {
