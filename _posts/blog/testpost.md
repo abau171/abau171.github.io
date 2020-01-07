@@ -2,7 +2,7 @@
 layout: blogpost
 category: blogpost
 title: Test Blog Post with a Really Long Name
-thumbnail: /car.jpg
+thumbnail: /img/car.jpg
 description: Blog post about nothing in particular.
 ---
 
@@ -38,8 +38,8 @@ struct test {
   - Two and a half
 - Three
 
-![Car render](/car.jpg)
-![Car render](/car.jpg#half)
+![Car render](/img/car.jpg)
+![Car render](/img/car.jpg#half)
 
 **Don't mess with me.**
 

@@ -3,7 +3,7 @@ layout: default
 title: Home
 ---
 
-![Car render](/car.jpg)
+![Car render](/img/car.jpg)
 
 # Hi there!
 
