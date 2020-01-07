@@ -6,4 +6,4 @@ permalink: /blog
 
 # Blog Posts
 
-Nothing here yet, but stay tuned!
+Nothing here yet...
