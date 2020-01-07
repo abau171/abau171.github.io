@@ -20,6 +20,6 @@ This is a fluid simulation project I built for UCSD's CSE 291 course in Physics 
 
 ## Interactive Viewer
 
-The interactive viewer lets watch the simulation unfold in real-time with a controllable camera. Properties such as physics framerate, gravity, and viscosity can be modified and take immediate effect in the simulation. The video below shows a demo of the viewer running on a GeForce 1060 GPU. On a more powerful GeForce RTX 2080 GPU, I achieved consistent 60 FPS simulation and display for up to 1 million particles.
+The interactive viewer lets you watch the simulation unfold in real-time with a controllable camera. Properties such as physics framerate, gravity, and viscosity can be modified and take immediate effect in the simulation. The video below shows a demo of the viewer running on a GeForce 1060 GPU. On a more powerful GeForce RTX 2080 GPU, I achieved consistent 60 FPS simulation and display for up to 1 million particles.
 
 {% include gfycat.html tag="recentthriftybrahmanbull" %}
