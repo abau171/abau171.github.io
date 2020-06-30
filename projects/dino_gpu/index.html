@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en-US">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="robots" content="index, follow" />
+        <title>Andrew Bauer - Dino GPU</title>
+        <meta name="description" content="A GPU-based progressive path tracer designed for fast and highly interactive rendering." />
+        <link rel="icon" type="image/png" href="/img/favicon.png">
+        <link href="/assets/main.css" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Lato&family=Roboto&family=Source+Code+Pro&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.13.0/css/all.css" integrity="sha384-Bfad6CLCknfcloXFOyFnlgtENryhrpZCe29RTifKEixXQZ38WheV+i/6YWSzkz3V" crossorigin="anonymous">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css" integrity="sha384-zB1R0rpPzHqg7Kpt0Aljp8JPLqbXI3bhnPWROx27a9N0Ll6ZP/+DiW/UqRcLbRjq" crossorigin="anonymous">
+        <script defer src="/assets/main.js"></script>
+        <script defer src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js" integrity="sha384-y23I5Q6l+B6vatafAwxRu/0oK/79VlbSz7Q9aiSZUvyWYIYsd+qj+o24G5ZU2zJz" crossorigin="anonymous"></script>
+        <script defer src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js" integrity="sha384-kWPLUVMOks5AQFrykwIup5lo0m3iMkkHrD0uJ4H5cjeGihAutqP0yW0J6dpFiVkI" crossorigin="anonymous"
+            onload="renderMathInElement(document.body);"></script>
+    </head>
+    <body>
+        <nav>
+            <a href="/">Andrew Bauer</a>
+            <a href="/about/">About</a>
+            <a href="/projects/">Projects</a>
+            <a href="/blog/">Blog</a>
+        </nav>
+        <main>
+            <header>
+                <h1>Dino GPU</h1>
+                
+            </header>
+<p>Dino GPU is the GPU version of <a href="/projects/dino">Dino</a>, which I use to experiment with interactive rendering. This project evolved from my very first path tracer. It is written in C++, and uses OptiX 7 for ray tracing, CUDA for miscellaneous GPU processing, and OpenGL for the interactive viewer.</p>
+
+<div class="gfycat">
+    <div>
+        <iframe src="https://gfycat.com/ifr/whimsicalexaltedeastrussiancoursinghounds?hd=1" frameborder="0" scrolling="no" allowfullscreen></iframe>
+    </div>
+</div>
+
+<h2>Features</h2>
+
+<ul>
+<li>interactive, progressive rendering in OpenGL window</li>
+<li>OptiX 7 ray intersections</li>
+<li>Mitsuba-style BSDF plugins</li>
+<li>texture mapping for arbitrary BSDF channels</li>
+<li>multiple supported integrators (path tracing and light tracing)</li>
+<li>next event estimation</li>
+<li>multiple importance sampling for direct lighting</li>
+<li>Russian roulette</li>
+<li>Beer's law attenuation</li>
+<li>depth of field</li>
+<li>HDR environment maps</li>
+<li>model instancing</li>
+<li>Phong surface normal interpolation</li>
+<li>JSON scene files</li>
+<li>Wavefront .obj model loading</li>
+</ul>
+
+<figure>
+    <a href="/projects/dino_gpu/purpleDragon.jpg">
+        <img src="/projects/dino_gpu/purpleDragon.jpg" alt="Beer's law attenuation through a transparent object. Dragon model courtesy of Stanford Computer Graphics Laboratory." title="Click for full-quality image." />
+    </a>
+    <figcaption>Beer's law attenuation through a transparent object. Dragon model courtesy of Stanford Computer Graphics Laboratory.</figcaption>
+</figure>
+
+<figure>
+    <a href="/projects/dino_gpu/car.jpg">
+        <img src="/projects/dino_gpu/car.jpg" alt="Complex object with multiple materials, environment mapping. Duesen Bayern Mystar 190 SL model by TurboSquid user desmonster. Bethnal Green Entrance environment map courtesy of HDRI Haven." title="Click for full-quality image." />
+    </a>
+    <figcaption>Complex object with multiple materials, environment mapping. Duesen Bayern Mystar 190 SL model by TurboSquid user desmonster. Bethnal Green Entrance environment map courtesy of HDRI Haven.</figcaption>
+</figure>
+
+<figure>
+    <a href="/projects/dino_gpu/interior.jpg">
+        <img src="/projects/dino_gpu/interior.jpg" alt="Multiple objects, texture mapping, and depth of field. Modified version of Interior Set scene by TurboSquid user IvanMasanin." title="Click for full-quality image." />
+    </a>
+    <figcaption>Multiple objects, texture mapping, and depth of field. Modified version of Interior Set scene by TurboSquid user IvanMasanin.</figcaption>
+</figure>
+
+        </main>
+        <footer>&copy; 2020 Andrew Bauer</footer>
+    </body>
+</html>
