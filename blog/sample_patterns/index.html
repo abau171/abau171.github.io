@@ -39,7 +39,7 @@
         <main>
             <header>
                 <h1>Sample Patterns</h1>
-                <h2>July 3, 2020</h2>
+                <h2>July 5, 2020</h2>
             </header>
 <h3>First Things First</h3>
 
@@ -95,9 +95,9 @@
 <p>First, <em>pmj02bn</em> is a progressive sequence. Many sample patterns such as stratified or <a href="https://graphics.pixar.com/library/MultiJitteredSampling/paper.pdf">Correlated Multi-Jitter</a> require you to know how many samples you want to use before rendering even begins and have higher error if you end up using a different number of samples. By contrast, a progressive sequence converges consistently regardless of how many samples you decide to use. This property turns out to be very important in features such as adaptive sampling and interactive rendering, where you don't know how many samples a pixel will get beforehand. In the case of the progressive sequences introduced in the PMJ paper (including <em>pmj02bn</em>) samples are placed in a continuously-subdivided grid in a very specific pattern which spreads them out very evenly.</p>
 
 <figure>
-    <a href="/blog/sample_patterns/figure9.png">
-        <img src="/blog/sample_patterns/figure9.jpg" alt="Figure 9 from the PMJ paper showing pattern used for all progressive jittered sequences. The first sample is chosen randomly. The grid is then subdivided and the second sample is chosen in the diagonally opposite grid cell, then the third and fourth then fill the remaining cells. The grid is subdivided again and diagonals are filled first before filling the rest, and the pattern repeats." title="Click for full-quality image." />
-    </a>
+
+        <img src="/blog/sample_patterns/figure9.png" alt="Figure 9 from the PMJ paper showing pattern used for all progressive jittered sequences. The first sample is chosen randomly. The grid is then subdivided and the second sample is chosen in the diagonally opposite grid cell, then the third and fourth then fill the remaining cells. The grid is subdivided again and diagonals are filled first before filling the rest, and the pattern repeats."  />
+
     <figcaption>Figure 9 from the PMJ paper showing pattern used for all progressive jittered sequences. The first sample is chosen randomly. The grid is then subdivided and the second sample is chosen in the diagonally opposite grid cell, then the third and fourth then fill the remaining cells. The grid is subdivided again and diagonals are filled first before filling the rest, and the pattern repeats.</figcaption>
 </figure>
 
@@ -106,9 +106,9 @@
 <p>The second useful property of <em>pmj02bn</em> is that it is a (0, 2) sequence. As with stratified sampling, a (0, 2) sequence guarantees each sample will fall within a different grid cell, but it makes this guarantee for several grids of various dimensions rather than just one. By stratifying across all of these cell shapes, or <em>base 2 elementary intervals</em>, samples are more strictly structured which leads to better convergence and greater resilience in cases of high warping. This resilience to warping turns out to be important for rendering since we tend to squash and stretch our samples quite a bit to fit our needs, for example sampling a rectangular light source which is very tall and narrow.</p>
 
 <figure>
-    <a href="/blog/sample_patterns/figure12.png">
-        <img src="/blog/sample_patterns/figure12.jpg" alt="Portion of figure 12 from the PMJ paper showing a collection of samples which are stratified according to all base 2 elementary intervals. Note that if these squares are stretched out in either dimension the samples will still be well-spaced due to this strict stratification." title="Click for full-quality image." />
-    </a>
+
+        <img src="/blog/sample_patterns/figure12.png" alt="Portion of figure 12 from the PMJ paper showing a collection of samples which are stratified according to all base 2 elementary intervals. Note that if these squares are stretched out in either dimension the samples will still be well-spaced due to this strict stratification."  />
+
     <figcaption>Portion of figure 12 from the PMJ paper showing a collection of samples which are stratified according to all base 2 elementary intervals. Note that if these squares are stretched out in either dimension the samples will still be well-spaced due to this strict stratification.</figcaption>
 </figure>
 
@@ -215,7 +215,9 @@
 
 <h1>Conclusion</h1>
 
-<p>I've been using simpler sample patterns for a while, but held off using more robust sequences for a while because it seemed much more interesting to implement new materials or effects. But sampling is an interesting topic in its own right, and faster convergence mean you can have more complex scenes and faster turnaround during development which is a big win. I'm currently working on some related features including adaptive sampling, which I'll post about in the future.</p>
+<p>I've been using simpler sample patterns for a while, but held off using more robust sequences for a while because it seemed much more interesting to implement new materials or effects. But sampling is an interesting topic in its own right, and faster convergence mean you can have more complex scenes and faster turnaround during development which is a big win.</p>
+
+<p>I'm currently working on some related features including adaptive sampling, which I'll post about in the future. In my tests, the improvements I achieved on Spring's skin and clothes correspond to about a 3&times; speed improvement switching from uniform to <em>pmj02bn</em>, which seems great because these are the largest parts of the character. Unfortunately, this improvement is wasted now because the hair is the bottleneck which drives the required number of samples per pixel and thus render time. With adaptive sampling, Dino will be able to take advantage of this improvement since the number of samples per pixel will no longer be fixed to whatever feature is causing the bottleneck.</p>
 
 <div class="footnotes">
 <hr />
