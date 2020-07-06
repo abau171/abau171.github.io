@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en-US">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="robots" content="index, follow" />
+        <title>Andrew Bauer - Sample Patterns</title>
+        <meta property="description" content="A strong sample pattern is key to efficient rendering. I describe Dino's sampling implementation which uses pmj02bn sequences." />
+        <meta property="og:title" content="Andrew Bauer - Sample Patterns" />
+        <meta property="og:description" content="A strong sample pattern is key to efficient rendering. I describe Dino's sampling implementation which uses pmj02bn sequences." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://abau.io/blog/sample_patterns" />
+        <meta property="og:image" content="https://abau.io/blog/sample_patterns/thumbnail2.jpg" />
+        <link rel="icon" type="image/png" href="/img/favicon.png">
+        <script async src="https://www.googletagmanager.com/gtag/js?id=UA-170359979-1"></script>
+        <script>
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+
+          gtag('config', 'UA-170359979-1');
+        </script>
+        <link href="/assets/main.css" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Lato:wght@700&family=Roboto&family=Source+Code+Pro&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.13.0/css/all.css" integrity="sha384-Bfad6CLCknfcloXFOyFnlgtENryhrpZCe29RTifKEixXQZ38WheV+i/6YWSzkz3V" crossorigin="anonymous">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css" integrity="sha384-zB1R0rpPzHqg7Kpt0Aljp8JPLqbXI3bhnPWROx27a9N0Ll6ZP/+DiW/UqRcLbRjq" crossorigin="anonymous">
+        <script defer src="/assets/main.js"></script>
+        <script defer src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js" integrity="sha384-y23I5Q6l+B6vatafAwxRu/0oK/79VlbSz7Q9aiSZUvyWYIYsd+qj+o24G5ZU2zJz" crossorigin="anonymous"></script>
+        <script defer src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js" integrity="sha384-kWPLUVMOks5AQFrykwIup5lo0m3iMkkHrD0uJ4H5cjeGihAutqP0yW0J6dpFiVkI" crossorigin="anonymous"
+            onload="renderMathInElement(document.body);"></script>
+    </head>
+    <body>
+        <nav>
+            <a href="/">Andrew Bauer</a>
+            <a href="/about/">About</a>
+            <a href="/projects/">Projects</a>
+            <a href="/blog/">Blog</a>
+        </nav>
+        <main>
+            <header>
+                <h1>Sample Patterns</h1>
+                <h2>July 3, 2020</h2>
+            </header>
+<h3>First Things First</h3>
+
+<p>This being my debut blog post, I thought I should start with my motivation for creating the blog. I entered the world of rendering pretty late into my undergraduate degree, but what originally drew me in was all the amazing rendering projects people have shared online. I've been working on my own personal renderer <a href="/projects/dino">Dino</a> for a few years now, which was inspired by these blogs and ultimately led to my decision to pursue rendering as a career. The purpose of this blog is to motivate me to keep working on my own projects, and also to give a bit back to the online world and maybe inspire someone else to enter this exciting field.</p>
+
+<p>While I won't be retroactively posting about how I set up the basics (there are plenty of online resources which cover these topics<sup class="footnote-ref" id="fnref-1"><a href="#fn-1">1</a></sup>), I would like to cover more advanced topics or those which I think could be helpful for beginners but don't have much online coverage.</p>
+
+<p>Now, on to the actual post.</p>
+
+<hr />
+
+<figure>
+    <div class="slider" style="max-width: 720px;">
+        <div class="leftImage">
+            <img src="/blog/sample_patterns/teapots_uniform.jpg" alt="Left Image: Uniform. Equal-SPP renders of the Utah teapot comparing uniform random with pmj02bn sample patterns. Using the stronger pmj02bn samples results in a cleaner render in the same amount of time." />
+            <span class="label whiteLabel">Uniform</span>
+        </div>
+        <div class="rightImage">
+            <img src="/blog/sample_patterns/teapots_pmj02bn.jpg" alt="Right Image: pmj02bn. Equal-SPP renders of the Utah teapot comparing uniform random with pmj02bn sample patterns. Using the stronger pmj02bn samples results in a cleaner render in the same amount of time." />
+            <span class="label whiteLabel">pmj02bn</span>
+        </div>
+        <div class="handle whiteHandle">
+            <div class="invisible"></div>
+            <div class="tab"></div>
+            <div class="leftArrow"></div>
+            <div class="rightArrow"></div>
+        </div>
+    </div>
+    <figcaption>Equal-SPP renders of the Utah teapot comparing uniform random with pmj02bn sample patterns. Using the stronger pmj02bn samples results in a cleaner render in the same amount of time.</figcaption>
+</figure>
+
+<p><a href="https://en.wikipedia.org/wiki/Monte_Carlo_integration">Monte Carlo integration</a> is a key technique required for modern rendering. The classic example of Monte Carlo integration is a simple algorithm which estimates \(\pi\) by generating random points on a square and counting the number of points which happen to fall inside a circle embedded in the square. Conceptually, this is exactly how modern rendering works, only instead of integrating the area of a circle we are solving a much more complex lighting integral. Consider the Rendering Equation <sup class="footnote-ref" id="fnref-2"><a href="#fn-2">2</a></sup>.</p>
+
+<p>\[L_o(\bm\omega_o) = L_e(\bm\omega_o) + \int\limits_\Omega L_i(\bm\omega_i) f(\bm\omega_o, \bm\omega_i) |cos\theta_i| d\bm\omega_i\]</p>
+
+<p>Everything within the integral is solved with a Monte Carlo estimator. The \(|cos\theta_i|\) term can usually be solved analytically, but the BRDF \(f\) and the incident lighting \(L_i\) are often both too complex for analytic integration. The full product \(L_i(\bm\omega_i) f(\bm\omega_o, \bm\omega_i) |cos\theta_i|\) just complicates things further, making Monte Carlo integration the only choice in non-trivial cases. Since this is still 2D integration (we are integrating over \(\Omega\), the 2D surface of the unit hemisphere) we still generate point samples on the 2D unit square \([0, 1)^2\), but warp them as needed for whatever sampling method we're using (BRDF importance sampling, next event estimation, etc.). A naive renderer will use uniformly random 2D samples, but it turns out there is a much better way.</p>
+
+<h1>Generating a Strong Sample Pattern</h1>
+
+<figure>
+
+        <img src="/blog/sample_patterns/patterns1.png" alt="An assortment of sampling patterns. Note how samples clump together less moving from uniform to stratified to best candidate. pmj02bn looks like it is a mix between stratified and best candidate, but it leads to the fastest convergence."  />
+
+    <figcaption>An assortment of sampling patterns. Note how samples clump together less moving from uniform to stratified to best candidate. pmj02bn looks like it is a mix between stratified and best candidate, but it leads to the fastest convergence.</figcaption>
+</figure>
+
+<p>The image above shows a brief selection of sample patterns that can be used for rendering. Random samples tend to cluster together in some places and leave holes in other places which results in slow convergence. Stratified or "jittered" sampling aims to correct this problem by constraining each random sample to a unique cell of a grid, which spreads them more evenly across the square and improves convergence. Best candidate sampling solves the clustering problem by generating only points which are as far as possible from any other point in the sequence, producing an interesting "blue noise" pattern which also improves convergence over uniformly random sampling.</p>
+
+<p>The final pattern's full name is "progressive multi-jittered (0, 2) sequences with blue noise properties", or <em>pmj02bn</em> for short (though this is still a mouthful). It was introduced fairly recently by some folks at Pixar in the 2018 paper <a href="https://graphics.pixar.com/library/ProgressiveMultiJitteredSampling/paper.pdf">Progressive Multi-Jittered Sample Sequences</a> (I'll just call it the PMJ paper). It doesn't look particularly special compared to stratified or best candidate samples, but it is carefully designed to maximize convergence and have a number of useful properties, which is why I chose it as Dino<sup class="footnote-ref" id="fnref-3"><a href="#fn-3">3</a></sup>'s sample pattern. I'll cover a few of these properties below, borrowing a few graphics from the original paper.</p>
+
+<h2>Property 1: Progressiveness</h2>
+
+<p>First, <em>pmj02bn</em> is a progressive sequence. Many sample patterns such as stratified or <a href="https://graphics.pixar.com/library/MultiJitteredSampling/paper.pdf">Correlated Multi-Jitter</a> require you to know how many samples you want to use before rendering even begins and have higher error if you end up using a different number of samples. By contrast, a progressive sequence converges consistently regardless of how many samples you decide to use. This property turns out to be very important in features such as adaptive sampling and interactive rendering, where you don't know how many samples a pixel will get beforehand. In the case of the progressive sequences introduced in the PMJ paper (including <em>pmj02bn</em>) samples are placed in a continuously-subdivided grid in a very specific pattern which spreads them out very evenly.</p>
+
+<figure>
+    <a href="/blog/sample_patterns/figure9.png">
+        <img src="/blog/sample_patterns/figure9.jpg" alt="Figure 9 from the PMJ paper showing pattern used for all progressive jittered sequences. The first sample is chosen randomly. The grid is then subdivided and the second sample is chosen in the diagonally opposite grid cell, then the third and fourth then fill the remaining cells. The grid is subdivided again and diagonals are filled first before filling the rest, and the pattern repeats." title="Click for full-quality image." />
+    </a>
+    <figcaption>Figure 9 from the PMJ paper showing pattern used for all progressive jittered sequences. The first sample is chosen randomly. The grid is then subdivided and the second sample is chosen in the diagonally opposite grid cell, then the third and fourth then fill the remaining cells. The grid is subdivided again and diagonals are filled first before filling the rest, and the pattern repeats.</figcaption>
+</figure>
+
+<h2>Property 2: (0, 2) Sequence</h2>
+
+<p>The second useful property of <em>pmj02bn</em> is that it is a (0, 2) sequence. As with stratified sampling, a (0, 2) sequence guarantees each sample will fall within a different grid cell, but it makes this guarantee for several grids of various dimensions rather than just one. By stratifying across all of these cell shapes, or <em>base 2 elementary intervals</em>, samples are more strictly structured which leads to better convergence and greater resilience in cases of high warping. This resilience to warping turns out to be important for rendering since we tend to squash and stretch our samples quite a bit to fit our needs, for example sampling a rectangular light source which is very tall and narrow.</p>
+
+<figure>
+    <a href="/blog/sample_patterns/figure12.png">
+        <img src="/blog/sample_patterns/figure12.jpg" alt="Portion of figure 12 from the PMJ paper showing a collection of samples which are stratified according to all base 2 elementary intervals. Note that if these squares are stretched out in either dimension the samples will still be well-spaced due to this strict stratification." title="Click for full-quality image." />
+    </a>
+    <figcaption>Portion of figure 12 from the PMJ paper showing a collection of samples which are stratified according to all base 2 elementary intervals. Note that if these squares are stretched out in either dimension the samples will still be well-spaced due to this strict stratification.</figcaption>
+</figure>
+
+<h2>Property 3: Blue Noise</h2>
+
+<p>The last property I want to mention is the "blue noise" or <em>bn</em> portion of <em>pmj02bn</em>. I've already briefly mentioned that the best candidate method generates a "blue noise" pattern which spreads samples out more evenly. It does this by generating multiple uniformly random candidate samples, then selecting the one which is farthest from any other sample previously added to the sequence. <em>pmj02bn</em> does exactly the same thing, but generates candidates according to the progressive and (0, 2) constraints. The samples are thus spread out a bit more, but due to the strict constraints they aren't quite as well-spaced as they could be. The paper actually mentions it comes down to a choice between the better convergence of <em>pmj02bn</em> and the more visually pleasing patterns generated by removing the (0, 2) constraints.</p>
+
+<figure>
+
+        <img src="/blog/sample_patterns/patterns2.png" alt="Two sample patterns from the PMJ paper, both with and without blue noise properties. For the progressive jittered (pj) sequence, its blue noise variant (pjbn) visibly reduces clumping. The effect is less pronounced comparing pmj02 to pmj02bn due to the strict (0, 2) constraints."  />
+
+    <figcaption>Two sample patterns from the PMJ paper, both with and without blue noise properties. For the progressive jittered (pj) sequence, its blue noise variant (pjbn) visibly reduces clumping. The effect is less pronounced comparing pmj02 to pmj02bn due to the strict (0, 2) constraints.</figcaption>
+</figure>
+
+<h2>Efficient Sample Generation</h2>
+
+<p>The PMJ paper comes with a very helpful <a href="https://graphics.pixar.com/library/ProgressiveMultiJitteredSampling/pmj_suppl.pdf">supplemental document</a> which includes pseudocode for generating any of the several progressive sequences introduced by the paper. Unfortunately, this pseudocode works by generating random samples according to the progressive pattern I mentioned above, then checking all the (0, 2) constraints before accepting them. This is fine for a small number of samples with coarse elementary intervals, but when many thousands of samples are required the (0, 2) constraints make it difficult to find an acceptable sample. Thankfully, <a href="https://pharr.org/matt/">Matt Pharr</a> published an <a href="http://jcgt.org/published/0008/01/04/paper.pdf">improved sample generation technique</a> which very efficiently produces random samples which already satisfy these (0, 2) constraints, leading to a huge improvement in speed for generating <em>pmj02bn</em> samples.</p>
+
+<h1>Rendering with Strong Samples</h1>
+
+<p>Using strong 2D samples in a renderer is conceptually straightforward, but you have to be careful or similarities in the patterns will result in correlation artifacts or noise that never really converges. The final method I settled on is based on descriptions of Pixar's RenderMan and also Blender's awesome open-source <a href="https://www.cycles-renderer.org/">Cycles renderer</a>.</p>
+
+<h2>Sampling in Dino</h2>
+
+<p>According to the PMJ paper, RenderMan pre-generates several hundred <em>pmj02bn</em> sequences which each contain only the first 4,096 samples. They hash the pixel index and ray depth to a specific sequence so each stochastic event which occurs when constructing each path uses an independent sequence. Dino is slightly different. I sometimes use more than 4,096 samples for a very clean render in a complex scene (a better integrator or any sort of denoising will be a better choice in the future), so I implemented Matt Pharr's improved sample generator and pre-generate 32 sequences of 16,384 samples which are used for every render. The generator proposed by the PMJ paper would do this in several minutes, but the improved generator gives me results almost immediately! I then distribute the samples from these 32 <em>channels</em> as needed during rendering.</p>
+
+<p>There are several stochastic events in a typical path tracer which consume 2D samples, and these may vary based on what sort of integrator you're using or techniques you've implemented. In the case of Dino's forward path tracing integrator, there are four places which require 2D samples: pixel filter sampling, lens area sampling (for depth of field), BSDF sampling, and light source sampling. Pixel filter and lens area sampling each require only one 2D sample per path, so only 2 of the 32 channels are required for them. BSDF and light samples are different in that they are required each bounce, so a theoretically infinite number of channels are required for both. I settle for using only 8 channels for each, then wrapping when a path gets too large. This is very unlikely to cause correlation issues in most scenes, but it is possible eg. if a path hits a diffuse surface then bounces off 7 mirrors before hitting another diffuse surface. A production renderer should avoid this and probably shuffle channels with hashing like RenderMan does.</p>
+
+<p>RenderMan decorrelates pixels by including the pixel index in the hash which selects a sequence. By contrast, Dino just uses the same channels for each pixel and decorrelates by using random Cranley-Patterson rotations for each pixel/channel pair. This is possibly not as effective as the hashing RenderMan does, but will end up being useful in the future!</p>
+
+<h2>Correlation Woes</h2>
+
+<p>After implementing everything as described above, I was excited to see the fruits of my labor. Unfortunately, my first renders with these progressive patterns ended up producing strange noise in areas with a lot of indirect lighting, and also artifacting around the edges of objects. This is immediately identifiable as correlation issues: indirect lighting requires chaining several BSDF samples, and edge artifacting can indicate correlation between pixel filter samples and BSDF samples.</p>
+
+<p>I thought at first that my implementation was incorrect, but I eventually discovered that shuffling the sequences after generation produced the nice, clean renders I was looking for. It turns out that all of the progressive patterns introduced in the PMJ paper actually cause correlation issues if chained together as in a path tracer unless you shuffle things around a bit. My first solution for this involved shuffling an exponentially-increasing portion of the samples as they were generated, which removed the correlations but also destroyed a lot of the progressiveness of the patterns. Thankfully, in my search for a better solution, I found that Blender's Cycles renderer recently implemented <em>pmj02bn</em>. Their code solves the correlation issue by shuffling every chunk of 16 samples as a post-processing step after the whole sequence has been generated. This preserves progressiveness but also completely removes the correlation artifacts. Score!</p>
+
+<figure>
+    <div class="slider" style="max-width: 720px;">
+        <div class="leftImage">
+            <img src="/blog/sample_patterns/noshuf.jpg" alt="Left Image: Original. Equal-SPP renders of the Stanford dragon using pmj02bn both with and without the extra shuffle step. Next event estimation disabled to highlight the correlation issues caused by BSDF sampling." />
+            <span class="label whiteLabel">Original</span>
+        </div>
+        <div class="rightImage">
+            <img src="/blog/sample_patterns/shuf.jpg" alt="Right Image: Shuffled. Equal-SPP renders of the Stanford dragon using pmj02bn both with and without the extra shuffle step. Next event estimation disabled to highlight the correlation issues caused by BSDF sampling." />
+            <span class="label whiteLabel">Shuffled</span>
+        </div>
+        <div class="handle whiteHandle">
+            <div class="invisible"></div>
+            <div class="tab"></div>
+            <div class="leftArrow"></div>
+            <div class="rightArrow"></div>
+        </div>
+    </div>
+    <figcaption>Equal-SPP renders of the Stanford dragon using pmj02bn both with and without the extra shuffle step. Next event estimation disabled to highlight the correlation issues caused by BSDF sampling.</figcaption>
+</figure>
+
+<h2>Results</h2>
+
+<p>Finally, I wanted to highlight the improvements I saw in Dino by switching from uniform to <em>pmj02bn</em> with some higher-quality assets than simple teapots and dragons. One of my current goals with Dino is to render a production-quality animation with believable characters. It's a big undertaking, and having an efficient renderer is super important when you're trying to render many frames of highly complex scenes.</p>
+
+<p>Usually it's difficult just to find production data available for personal use. Thankfully, the Blender Foundation has been producing what they call <a href="https://cloud.blender.org/open-projects">Open Movies</a> where they make a short film and then release the project files (characters, props, entire shots&mdash;<em>everything</em>) to the public. It requires a monthly subscription to access most of the project files but you get project assets and animations from a ton of their short films. Below, are some results using the main character from the Blender short film <a href="https://www.youtube.com/watch?v=WhWc3b3KhnY"><em>Spring</em></a>.</p>
+
+<figure>
+    <div class="slider" style="max-width: 720px;">
+        <div class="leftImage">
+            <img src="/blog/sample_patterns/spring_full_uniform.jpg" alt="Left Image: Uniform. Spring character rendered with Dino. Comparison between uniform random and pmj02bn sampling." />
+            <span class="label blackLabel">Uniform</span>
+        </div>
+        <div class="rightImage">
+            <img src="/blog/sample_patterns/spring_full_pmj02bn.jpg" alt="Right Image: pmj02bn. Spring character rendered with Dino. Comparison between uniform random and pmj02bn sampling." />
+            <span class="label blackLabel">pmj02bn</span>
+        </div>
+        <div class="handle whiteHandle">
+            <div class="invisible"></div>
+            <div class="tab"></div>
+            <div class="leftArrow"></div>
+            <div class="rightArrow"></div>
+        </div>
+    </div>
+    <figcaption>Spring character rendered with Dino. Comparison between uniform random and pmj02bn sampling.</figcaption>
+</figure>
+
+<p>The benefit of improved sampling is pretty clear. Spring's skin shows the largest improvement, which somewhat surprised me since Dino currently still uses uniform random samples for Monte Carlo subsurface scattering which the skin uses. Unsurprisingly, the hair shows the least improvement since much of the color of hair comes from indirect bounces<sup class="footnote-ref" id="fnref-4"><a href="#fn-4">4</a></sup> which have diminishing returns even with a good sample pattern. If we zoom into Spring's head the skin improvement is even clearer and we can see that the hair actually is slightly improved.</p>
+
+<figure>
+    <div class="slider" style="max-width: 512px;">
+        <div class="leftImage">
+            <img src="/blog/sample_patterns/spring_head_uniform.jpg" alt="Left Image: Uniform. Close-up of Spring's head rendered with uniform random and pmj02bn sample patterns." />
+            <span class="label blackLabel">Uniform</span>
+        </div>
+        <div class="rightImage">
+            <img src="/blog/sample_patterns/spring_head_pmj02bn.jpg" alt="Right Image: pmj02bn. Close-up of Spring's head rendered with uniform random and pmj02bn sample patterns." />
+            <span class="label blackLabel">pmj02bn</span>
+        </div>
+        <div class="handle whiteHandle">
+            <div class="invisible"></div>
+            <div class="tab"></div>
+            <div class="leftArrow"></div>
+            <div class="rightArrow"></div>
+        </div>
+    </div>
+    <figcaption>Close-up of Spring's head rendered with uniform random and pmj02bn sample patterns.</figcaption>
+</figure>
+
+<h1>Conclusion</h1>
+
+<p>I've been using simpler sample patterns for a while, but held off using more robust sequences for a while because it seemed much more interesting to implement new materials or effects. But sampling is an interesting topic in its own right, and faster convergence mean you can have more complex scenes and faster turnaround during development which is a big win. I'm currently working on some related features including adaptive sampling, which I'll post about in the future.</p>
+
+<div class="footnotes">
+<hr />
+<ol>
+<li id="fn-1">
+<p>If you're a beginner, I recommend starting with <a href="https://raytracing.github.io/books/RayTracingInOneWeekend.html">Ray Tracing in One Weekend</a>. Then, if you're really interested, check out the fantastic <a href="http://www.pbr-book.org/">PBR book</a>.&#160;<a href="#fnref-1" class="footnoteBackLink" title="Jump back to footnote 1 in the text.">&#8617;</a></p>
+</li>
+
+<li id="fn-2">
+<p><a href="http://www.cs.cmu.edu/afs/cs/academic/class/15462-s13/www/lec_slides/86kajiyaRenderingEquation.pdf">The Rendering Equation</a>, Kajiya (1986)&#160;<a href="#fnref-2" class="footnoteBackLink" title="Jump back to footnote 2 in the text.">&#8617;</a></p>
+</li>
+
+<li id="fn-3">
+<p>There are a plenty of other perfectly valid options than <em>pmj02bn</em>. Correlated Multi-Jitter and Sobol with Owen Shuffling are two very popular choices, although both have their flaws (CMJ is not progressive by default and Sobol generates less well-distributed patterns as you use more dimensions). The PMJ paper has a good analysis of the relative performance of these and several other patterns. Also see section 7 of the <a href="https://graphics.pixar.com/library/RendermanTog2018/paper.pdf">2018 RenderMan architecture paper</a> for a comparison of Sobol dimensions.&#160;<a href="#fnref-3" class="footnoteBackLink" title="Jump back to footnote 3 in the text.">&#8617;</a></p>
+</li>
+
+<li id="fn-4">
+<p>Rendering dark hair like Spring's relies much less on indirect bounces than lighter hair does, but they are still very important to produce realistic hair. I'll probably make a post about how I render hair in the future.&#160;<a href="#fnref-4" class="footnoteBackLink" title="Jump back to footnote 4 in the text.">&#8617;</a></p>
+</li>
+</ol>
+</div>
+
+        </main>
+        <footer>&copy; 2020 Andrew Bauer</footer>
+    </body>
+</html>
