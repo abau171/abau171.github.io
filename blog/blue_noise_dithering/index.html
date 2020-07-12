@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en-US">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="robots" content="index, follow" />
+        <title>Andrew Bauer - Blue Noise Dithering</title>
+        <meta property="description" content="Error is usually distributed in image space with white noise, but we can dither pixels using blue noise textures to reduce perceptual error." />
+        <meta property="og:title" content="Andrew Bauer - Blue Noise Dithering" />
+        <meta property="og:description" content="Error is usually distributed in image space with white noise, but we can dither pixels using blue noise textures to reduce perceptual error." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://abau.io/blog/blue_noise_dithering" />
+        <meta property="og:image" content="https://abau.io/blog/blue_noise_dithering/thumbnail2.jpg" />
+        <link rel="icon" type="image/png" href="/img/favicon.png">
+        <script async src="https://www.googletagmanager.com/gtag/js?id=UA-170359979-1"></script>
+        <script>
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+
+          gtag('config', 'UA-170359979-1');
+        </script>
+        <link href="/assets/main.css" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Lato:wght@700&family=Roboto&family=Source+Code+Pro&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.13.0/css/all.css" integrity="sha384-Bfad6CLCknfcloXFOyFnlgtENryhrpZCe29RTifKEixXQZ38WheV+i/6YWSzkz3V" crossorigin="anonymous">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css" integrity="sha384-zB1R0rpPzHqg7Kpt0Aljp8JPLqbXI3bhnPWROx27a9N0Ll6ZP/+DiW/UqRcLbRjq" crossorigin="anonymous">
+        <script defer src="/assets/main.js"></script>
+        <script defer src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js" integrity="sha384-y23I5Q6l+B6vatafAwxRu/0oK/79VlbSz7Q9aiSZUvyWYIYsd+qj+o24G5ZU2zJz" crossorigin="anonymous"></script>
+        <script defer src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js" integrity="sha384-kWPLUVMOks5AQFrykwIup5lo0m3iMkkHrD0uJ4H5cjeGihAutqP0yW0J6dpFiVkI" crossorigin="anonymous"
+            onload="renderMathInElement(document.body);"></script>
+    </head>
+    <body>
+        <nav>
+            <a href="/">Andrew Bauer</a>
+            <a href="/about/">About</a>
+            <a href="/projects/">Projects</a>
+            <a href="/blog/">Blog</a>
+        </nav>
+        <main>
+            <header>
+                <h1>Blue Noise Dithering</h1>
+                <h2>July 11, 2020</h2>
+            </header>
+<figure>
+
+        <img src="/blog/blue_noise_dithering/blue_banner.png" alt=""  />
+
+
+</figure>
+
+<p>In my <a href="/blog/sample_patterns/">last post</a>, I talked about how Dino handles sampling. I mentioned that I chose Cranley-Patterson rotations<sup class="footnote-ref" id="fnref-1"><a href="#fn-1">1</a></sup> over hashing to decorrelate pixels even though they are probably less effective at reducing noise<sup class="footnote-ref" id="fnref-2"><a href="#fn-2">2</a></sup>. I made this decision because I wanted to play with an interesting rendering technique from a 2018 paper entitled <a href="https://www.arnoldrenderer.com/research/dither_abstract.pdf">Blue-noise Dithered Sampling</a> which takes advantage of correlations between pixels to reduce perceptual error. I'll talk about exactly what that means, and render some results with my personal renderer <a href="/projects/dino/">Dino</a>.</p>
+
+<h1>Correlation is Bad</h1>
+
+<p>I previously discussed some correlation issues I ran into while implementing better sampling for Dino which manifested as noise and edge artifacts. These issues appeared because the sample patterns I used were structurally too similar to each other and ended up constructing similar light paths multiple times while avoiding others. The solution was to randomly shuffle parts of the sequence to remove the correlations, letting the renderer explore all light paths while maintaining the strong sampling properties.</p>
+
+<p>The correlation we're considering in this post is of a slightly different nature. Rather than considering similar paths <em>within a pixel</em>, we're now interested in similar paths <em>among nearby pixels</em>. If two nearby pixels are correlated, they generate similar paths and thus their results will likely be similar. The only differences come from their slightly different pixel locations, though this can cause a butterfly effect leading to very different outputs depending on the scene being rendered.</p>
+
+<p>It's actually pretty easy to see pixel correlations in action. I'm going to render the same simple scene several times, only changing the Cranley-Patterson rotations. For the first few renders, next event estimation is disabled so we can focus on how pixel correlations affect just BSDF sampling (this just makes the correlations easier to see). First, let's start with a reference image so we know what the scene <em>should</em> look like.</p>
+
+<figure>
+    <a href="/blog/blue_noise_dithering/ref.png">
+        <img src="/blog/blue_noise_dithering/ref.jpg" alt="Reference image of Cornell box with Stanford dragon." title="Click for full-quality image." />
+    </a>
+    <figcaption>Reference image of Cornell box with Stanford dragon.</figcaption>
+</figure>
+
+<p>Now, let's look at the same scene, rendered with only 4 samples per pixel and standard, uniformly random Cranley-Patterson rotations. We should get the gist of what it should look like, but the image will be quite noisy, especially since next event estimation is disabled.</p>
+
+<figure>
+    <a href="/blog/blue_noise_dithering/dragon_white_nonee.png">
+        <img src="/blog/blue_noise_dithering/dragon_white_nonee.jpg" alt="Cornell box with Stanford dragon. Uniformly random Cranley-Patterson rotations at 4 SPP with NEE disabled." title="Click for full-quality image." />
+    </a>
+    <figcaption>Cornell box with Stanford dragon. Uniformly random Cranley-Patterson rotations at 4 SPP with NEE disabled.</figcaption>
+</figure>
+
+<p>Now we're going to do something a little strange. Instead of trying to <em>de</em>-correlate pixels, we're going to try to correlate them as much as possible. Since the only mechanism in place right now which decorrelates pixels is the random per-pixel Cranley-Patterson rotations, let's see what happens when we set them all to the same 2D vector, specifically \((0, 0)\).</p>
+
+<figure>
+    <a href="/blog/blue_noise_dithering/dragon_none_nonee.png">
+        <img src="/blog/blue_noise_dithering/dragon_none_nonee.jpg" alt="Cornell box with Stanford dragon, 4 SPP with NEE disabled and no Cranley-Patterson rotations." title="Click for full-quality image." />
+    </a>
+    <figcaption>Cornell box with Stanford dragon, 4 SPP with NEE disabled and no Cranley-Patterson rotations.</figcaption>
+</figure>
+
+<p>Wow. It looks terrible. What happened?</p>
+
+<p>It's actually not too difficult to understand why this happens. Since we're feeding the same 2D sample to the BSDF sampling function in every pixel, all paths which bounce off a flat, diffuse surface like a wall end up going in <em>exactly</em> the same direction. The largest of the blocky patches on the walls are where the paths bounce just once, and the bounce direction happens to line up with the top light source. The smaller patches are from further bouncing, and much of the noise comes from the dragon which decorrelating things a bit with its curved surface since light no longer bounces in quite the same direction.</p>
+
+<p>It's important to note that although this image looks really bad compared to the first noisy render, images produced with either method will have exactly the same error when compared against the reference image, at least on average. In fact, given enough time the constant-rotation image will converge to the reference just as the random-rotation image would! Don't believe me? See for yourself below.</p>
+
+<div class="gfycat" style="max-width: 512px;">
+    <div style="padding-top: 100%;">
+        <iframe src="https://gfycat.com/ifr/hotwastefuldore?hd=1" frameborder="0" scrolling="no" allowfullscreen></iframe>
+    </div>
+</div>
+
+<p>Trippy.</p>
+
+<p>But even if rendering like this is <em>technically</em> unbiased, it's pretty clear that you would never use something like this for anything practical.</p>
+
+<h1>Correlation is <em>Not Always</em> Bad</h1>
+
+<p>So far, I've shown how correlation is generally best avoided during rendering, but a key insight of the Blue-noise Dithered Sampling paper is that correlation can actually be helpful&mdash;if you know how to use it. As we've seen above, we have some control over pixel correlations with Cranley-Patterson rotations, we just don't know of any way to pick rotations which is better than uniformly random.</p>
+
+<p>Enter blue noise. If we pick uniformly random 2D vectors for each pixel, we end up generating uncorrelated <em>white noise</em>, which can looks sort of chunky. By contrast, <em>blue noise</em> cuts out all of the low-frequency chunkiness, leaving only high-frequency noise and tends to look more pleasant and uniform than white noise. The Blue-noise Dithered Sampling paper introduces a very simple algorithm to create blue noise textures that we can use for Cranley-Patterson rotations by optimizing an energy function on the image. Optimization can sometimes be finicky to implement and use, but the basic algorithm to generate a \(d\)-dimensional blue noise texture is very straightforward:</p>
+
+<ol>
+<li>Generate a white noise texture of random vectors \(\in [0, 1)^d\).</li>
+<li>Pick 2 random pixels, then swap them if doing so reduces the energy function (see paper).</li>
+<li>Repeat step 2 until a blue noise pattern emerges.</li>
+</ol>
+
+<p>I told you it was easy! The only issue is that the energy is technically a function over an infinite number of points, but the contributions drop off with distance so using a \(9\times9\) window around the target pixels is sufficient. Here's all the code you need to generate a 2D blue noise texture<sup class="footnote-ref" id="fnref-3"><a href="#fn-3">3</a></sup>:</p>
+
+<div class="codehilite"><pre><span></span><code><span class="kt">float</span> <span class="nf">energy</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">glm</span><span class="o">::</span><span class="n">vec2</span><span class="o">&gt;&amp;</span> <span class="n">buffer</span><span class="p">,</span> <span class="n">glm</span><span class="o">::</span><span class="n">ivec2</span> <span class="n">a</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">ia</span> <span class="o">=</span> <span class="n">a</span><span class="p">.</span><span class="n">y</span> <span class="o">*</span> <span class="n">BLUE_NOISE_DIM</span> <span class="o">+</span> <span class="n">a</span><span class="p">.</span><span class="n">x</span><span class="p">;</span>
+
+    <span class="c1">// Loop over 9x9 region around target pixel.</span>
+    <span class="kt">float</span> <span class="n">totalEnergy</span> <span class="o">=</span> <span class="mf">0.0f</span><span class="p">;</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">dy</span> <span class="o">=</span> <span class="o">-</span><span class="mi">4</span><span class="p">;</span> <span class="n">dy</span> <span class="o">&lt;=</span> <span class="mi">4</span><span class="p">;</span> <span class="n">dy</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">dx</span> <span class="o">=</span> <span class="o">-</span><span class="mi">4</span><span class="p">;</span> <span class="n">dx</span> <span class="o">&lt;=</span> <span class="mi">4</span><span class="p">;</span> <span class="n">dx</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">dx</span> <span class="o">==</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="n">dy</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="k">continue</span><span class="p">;</span>
+
+            <span class="c1">// Find coordinates of second pixel, wrapping if necessary.</span>
+            <span class="n">glm</span><span class="o">::</span><span class="n">ivec2</span> <span class="n">b</span><span class="p">(</span>
+                <span class="p">(</span><span class="n">a</span><span class="p">.</span><span class="n">x</span> <span class="o">+</span> <span class="n">dx</span> <span class="o">+</span> <span class="n">BLUE_NOISE_DIM</span><span class="p">)</span> <span class="o">%</span> <span class="n">BLUE_NOISE_DIM</span><span class="p">,</span>
+                <span class="p">(</span><span class="n">a</span><span class="p">.</span><span class="n">y</span> <span class="o">+</span> <span class="n">dy</span> <span class="o">+</span> <span class="n">BLUE_NOISE_DIM</span><span class="p">)</span> <span class="o">%</span> <span class="n">BLUE_NOISE_DIM</span><span class="p">);</span>
+            <span class="kt">int</span> <span class="n">ib</span> <span class="o">=</span> <span class="n">b</span><span class="p">.</span><span class="n">y</span> <span class="o">*</span> <span class="n">BLUE_NOISE_DIM</span> <span class="o">+</span> <span class="n">b</span><span class="p">.</span><span class="n">x</span><span class="p">;</span>
+
+            <span class="c1">// Add to total energy using energy function from the paper.</span>
+            <span class="c1">// This is the 2D case: d = 2 (optimized out)</span>
+            <span class="c1">// Use recommended parameters:</span>
+            <span class="c1">//     sigma_i = 2.1</span>
+            <span class="c1">//     sigma_s = 1.0 (optimized out)</span>
+            <span class="n">totalEnergy</span> <span class="o">+=</span> <span class="n">std</span><span class="o">::</span><span class="n">exp</span><span class="p">(</span>
+                <span class="o">-</span><span class="n">glm</span><span class="o">::</span><span class="n">length2</span><span class="p">(</span><span class="n">glm</span><span class="o">::</span><span class="n">vec2</span><span class="p">(</span><span class="n">dx</span><span class="p">,</span> <span class="n">dy</span><span class="p">))</span> <span class="o">/</span> <span class="p">(</span><span class="mf">2.1f</span> <span class="o">*</span> <span class="mf">2.1f</span><span class="p">)</span>
+                <span class="o">-</span> <span class="n">glm</span><span class="o">::</span><span class="n">distance</span><span class="p">(</span><span class="n">buffer</span><span class="p">[</span><span class="n">ia</span><span class="p">],</span> <span class="n">buffer</span><span class="p">[</span><span class="n">ib</span><span class="p">]));</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+
+    <span class="k">return</span> <span class="n">totalEnergy</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="nf">minimizeEnergy</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">glm</span><span class="o">::</span><span class="n">vec2</span><span class="o">&gt;&amp;</span> <span class="n">buffer</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="c1">// Try to swap pixels for many iterations.</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">NUM_ITERATIONS</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+
+        <span class="c1">// Select two random pixels.</span>
+        <span class="n">glm</span><span class="o">::</span><span class="n">ivec2</span> <span class="n">a</span><span class="p">(</span><span class="n">randomu</span><span class="p">()</span> <span class="o">%</span> <span class="n">BLUE_NOISE_DIM</span><span class="p">,</span> <span class="n">randomu</span><span class="p">()</span> <span class="o">%</span> <span class="n">BLUE_NOISE_DIM</span><span class="p">);</span>
+        <span class="n">glm</span><span class="o">::</span><span class="n">ivec2</span> <span class="n">b</span><span class="p">(</span><span class="n">randomu</span><span class="p">()</span> <span class="o">%</span> <span class="n">BLUE_NOISE_DIM</span><span class="p">,</span> <span class="n">randomu</span><span class="p">()</span> <span class="o">%</span> <span class="n">BLUE_NOISE_DIM</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">a</span> <span class="o">==</span> <span class="n">b</span><span class="p">)</span> <span class="k">continue</span><span class="p">;</span>
+
+        <span class="c1">// Find pixel indices in buffer.</span>
+        <span class="kt">int</span> <span class="n">ia</span> <span class="o">=</span> <span class="n">a</span><span class="p">.</span><span class="n">y</span> <span class="o">*</span> <span class="n">BLUE_NOISE_DIM</span> <span class="o">+</span> <span class="n">a</span><span class="p">.</span><span class="n">x</span><span class="p">;</span>
+        <span class="kt">int</span> <span class="n">ib</span> <span class="o">=</span> <span class="n">b</span><span class="p">.</span><span class="n">y</span> <span class="o">*</span> <span class="n">BLUE_NOISE_DIM</span> <span class="o">+</span> <span class="n">b</span><span class="p">.</span><span class="n">x</span><span class="p">;</span>
+
+        <span class="c1">// Find energy before and after swapping pixels.</span>
+        <span class="kt">float</span> <span class="n">startEnergy</span> <span class="o">=</span> <span class="n">energy</span><span class="p">(</span><span class="n">buffer</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span> <span class="o">+</span> <span class="n">energy</span><span class="p">(</span><span class="n">buffer</span><span class="p">,</span> <span class="n">b</span><span class="p">);</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">swap</span><span class="p">(</span><span class="n">buffer</span><span class="p">[</span><span class="n">ia</span><span class="p">],</span> <span class="n">buffer</span><span class="p">[</span><span class="n">ib</span><span class="p">]);</span>
+        <span class="kt">float</span> <span class="n">endEnergy</span> <span class="o">=</span> <span class="n">energy</span><span class="p">(</span><span class="n">buffer</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span> <span class="o">+</span> <span class="n">energy</span><span class="p">(</span><span class="n">buffer</span><span class="p">,</span> <span class="n">b</span><span class="p">);</span>
+
+        <span class="c1">// If the energy was lower before the swap, then swap back.</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">startEnergy</span> <span class="o">&lt;</span> <span class="n">endEnergy</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">std</span><span class="o">::</span><span class="n">swap</span><span class="p">(</span><span class="n">buffer</span><span class="p">[</span><span class="n">ia</span><span class="p">],</span> <span class="n">buffer</span><span class="p">[</span><span class="n">ib</span><span class="p">]);</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">glm</span><span class="o">::</span><span class="n">vec2</span><span class="o">&gt;</span> <span class="n">generateBlueNoise</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="c1">// Initialize the texture with white noise.</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">glm</span><span class="o">::</span><span class="n">vec2</span><span class="o">&gt;</span> <span class="n">buffer</span><span class="p">(</span><span class="n">BLUE_NOISE_DIM</span> <span class="o">*</span> <span class="n">BLUE_NOISE_DIM</span><span class="p">);</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">glm</span><span class="o">::</span><span class="n">vec2</span><span class="o">&amp;</span> <span class="nl">val</span> <span class="p">:</span> <span class="n">buffer</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="n">glm</span><span class="o">::</span><span class="n">vec2</span><span class="p">(</span><span class="n">randomf</span><span class="p">(),</span> <span class="n">randomf</span><span class="p">());</span>
+    <span class="p">}</span>
+
+    <span class="c1">// Minimize energy and return the resulting blue noise texture.</span>
+    <span class="n">minimizeEnergy</span><span class="p">(</span><span class="n">buffer</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">buffer</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>Dino uses the paper's recommended texture size (\(128\times128\), so <code>BLUE_NOISE_DIM = 128</code>), and minimizes the energy for about 4,000,000 iterations<sup class="footnote-ref" id="fnref-4"><a href="#fn-4">4</a></sup>. Results are shown below.</p>
+
+<figure>
+
+        <img src="/blog/blue_noise_dithering/noise_textures.png" alt="Noise textures showing 2D vectors where \(x\) and \(y\) are the red and green channels, respectively. White noise, or uncorrelated random vectors appears chunky and inconsistent. Blue noise removes all low frequencies and produces more consistent-looking noise."  />
+
+    <figcaption>Noise textures showing 2D vectors where \(x\) and \(y\) are the red and green channels, respectively. White noise, or uncorrelated random vectors appears chunky and inconsistent. Blue noise removes all low frequencies and produces more consistent-looking noise.</figcaption>
+</figure>
+
+<p>All we need to do now is plug these 2D blue noise vectors in as Cranley-Patterson rotations instead of using uncorrelated, uniformly random rotations. We'll need a unique blue noise texture for each stochastic event, or, in Dino's case, a unique texture for each of the 32 sample channels. In these last renders, I'll turn next event estimation back on.</p>
+
+<figure>
+    <div class="slider" style="max-width: 512px;">
+        <div class="leftImage">
+            <img src="/blog/blue_noise_dithering/dragon_white.jpg" alt="Left Image: Uncorrelated. Comparison of dithered sampling with uncorrelated white noise and blue noise textures using 4 samples per pixel." />
+            <span class="label whiteLabel">Uncorrelated</span>
+        </div>
+        <div class="rightImage">
+            <img src="/blog/blue_noise_dithering/dragon_blue.jpg" alt="Right Image: Blue Noise. Comparison of dithered sampling with uncorrelated white noise and blue noise textures using 4 samples per pixel." />
+            <span class="label whiteLabel">Blue Noise</span>
+        </div>
+        <div class="handle whiteHandle">
+            <div class="invisible"></div>
+            <div class="tab"></div>
+            <div class="leftArrow"></div>
+            <div class="rightArrow"></div>
+        </div>
+    </div>
+    <figcaption>Comparison of dithered sampling with uncorrelated white noise and blue noise textures using 4 samples per pixel.</figcaption>
+</figure>
+
+<figure>
+    <div class="slider" style="max-width: 720px;">
+        <div class="leftImage">
+            <img src="/blog/blue_noise_dithering/dragon_white_closeup.jpg" alt="Left Image: Uncorrelated. Close-up of dragon's head using only 1 sample per pixel." />
+            <span class="label whiteLabel">Uncorrelated</span>
+        </div>
+        <div class="rightImage">
+            <img src="/blog/blue_noise_dithering/dragon_blue_closeup.jpg" alt="Right Image: Blue Noise. Close-up of dragon's head using only 1 sample per pixel." />
+            <span class="label whiteLabel">Blue Noise</span>
+        </div>
+        <div class="handle whiteHandle">
+            <div class="invisible"></div>
+            <div class="tab"></div>
+            <div class="leftArrow"></div>
+            <div class="rightArrow"></div>
+        </div>
+    </div>
+    <figcaption>Close-up of dragon's head using only 1 sample per pixel.</figcaption>
+</figure>
+
+<p>There is a small, but definitely noticable improvement! Although the error is technically unchanged, the visible blue noise patterns make the renders appear more converged<sup class="footnote-ref" id="fnref-5"><a href="#fn-5">5</a></sup>. But does this hold up when we use slightly more complex shapes, materials, and lighting?</p>
+
+<figure>
+    <div class="slider" style="max-width: 512px;">
+        <div class="leftImage">
+            <img src="/blog/blue_noise_dithering/spring_white.jpg" alt="Left Image: Uncorrelated. Close-up of Spring's head using 4 samples per pixel." />
+            <span class="label blackLabel">Uncorrelated</span>
+        </div>
+        <div class="rightImage">
+            <img src="/blog/blue_noise_dithering/spring_blue.jpg" alt="Right Image: Blue Noise. Close-up of Spring's head using 4 samples per pixel." />
+            <span class="label blackLabel">Blue Noise</span>
+        </div>
+        <div class="handle whiteHandle">
+            <div class="invisible"></div>
+            <div class="tab"></div>
+            <div class="leftArrow"></div>
+            <div class="rightArrow"></div>
+        </div>
+    </div>
+    <figcaption>Close-up of Spring's head using 4 samples per pixel.</figcaption>
+</figure>
+
+<p>This is an even bigger improvement than with the dragons! Unforunately, blue noise dithering can't really help out when a lot of indirect bounces are needed as with Spring's hair. Also, the benefits tend to disappear when you try to use more than just a few samples per pixel. Still, this can be a useful technique for eg. cleaning up early progressive renders, especially since denoisers can perform better when blue noise patterns are used.</p>
+
+<h1>Conclusion</h1>
+
+<p>I was very satisfied with the results I got for blue noise dithering with low sample counts, but it would have been nice to keep these patterns for higher sample counts so it could actually be useful for cleaner renders. Thankfully this technique is very new and there's been some interest in improving on it. Notably, Heitz et al. introduced two improvements last year. The <a href="https://belcour.github.io/blog/research/2019/06/17/sampling-bluenoise.html">first technique</a> introduces a way to do blue noise dithered sampling without Cranley-Patterson rotations, somewhat improving results especially when more samples are used. The <a href="https://belcour.github.io/blog/research/2019/06/18/animation-bluenoise.html">second technique</a> introduces blue noise patterns not from pixel-local decisions, but through adaptively sorting a neighborhood of pixel samples based on their expected output.</p>
+
+<p>I think the adaptive sorting is particularly interesting and I'd like to try implementing it at some point. However, since I also want to implement adaptive sampling, I wonder how this sorting can work if not all pixels have the same sample count.</p>
+
+<div class="footnotes">
+<hr />
+<ol>
+<li id="fn-1">
+<p>A <em>Cranley-Patterson rotation</em> or <em>toroidal shift</em> is just a random \(d\)-dimensional vector \(\in [0, 1)^d\) which is added to each \(d\)-dimensional sample point, modulo 1 (to keep the sample point in \([0, 1)^d\)). These were first described by Cranley and Patterson in <a href="https://epubs.siam.org/doi/pdf/10.1137/0713071">Randomization of Number Theoretic Methods for Multiple Integration</a> (1976).&#160;<a href="#fnref-1" class="footnoteBackLink" title="Jump back to footnote 1 in the text.">&#8617;</a></p>
+</li>
+
+<li id="fn-2">
+<p>The shifts done by Cranley-Patterson rotations break the elementary intervals in (0, 2) sample patterns such as <em>pmj02bn</em> which Dino uses. Although these patterns usually wrap without issue, the integrals we solve with them often draw hard boundaries at the edges of the unit square so it makes sense to align the elementary intervals to these edges. See Kollig and Keller's <a href="https://www.uni-kl.de/AG-Heinrich/EMS.pdf">Efficient Multidimensional Sampling</a> (2002) for more details.&#160;<a href="#fnref-2" class="footnoteBackLink" title="Jump back to footnote 2 in the text.">&#8617;</a></p>
+</li>
+
+<li id="fn-3">
+<p>This is a simplified version of the code Dino uses. You'll need to define the <code>randomu()</code> and <code>randomf()</code> functions which return a random <code>unsigned int</code> and random <code>float</code> \(\in [0, 1)\), respectively. There's also plenty of room for optimization (eg. the window size can be smaller and some data can be reused), and you'll probably also want to run several generators in parallel if you want to efficiently generate multiple blue noise textures.&#160;<a href="#fnref-3" class="footnoteBackLink" title="Jump back to footnote 3 in the text.">&#8617;</a></p>
+</li>
+
+<li id="fn-4">
+<p>Dino actually adaptively decides how many iterations to use. It runs batches of 10,000 iterations and counts the number of successful swaps in each batch. If the number of successful swaps is less than 20, then the blue noise texture is considered complete. You can reduce the threshold below 20 for slightly better textures, but it'll take longer to run.&#160;<a href="#fnref-4" class="footnoteBackLink" title="Jump back to footnote 4 in the text.">&#8617;</a></p>
+</li>
+
+<li id="fn-5">
+<p>This is actually indicative that the per-value error metrics which graphics research papers regularly use (MSE, RMSE, etc.) don't always correspond with perceptual differences according to the human visual system. In fact, it's not just the human visual system since denoisers can actually perform better when blue noise dithering is used.&#160;<a href="#fnref-5" class="footnoteBackLink" title="Jump back to footnote 5 in the text.">&#8617;</a></p>
+</li>
+</ol>
+</div>
+
+        </main>
+        <footer>&copy; 2020 Andrew Bauer</footer>
+    </body>
+</html>

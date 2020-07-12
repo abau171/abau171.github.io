@@ -60,7 +60,7 @@
 
 <h4>Material Plugins</h4>
 
-<p>Dino supports materials using a <a href="https://github.com/mitsuba-renderer/mitsuba">Mitsuba</a>-like eval/sample/pdf interface. BSDFs can contain both smooth and Dirac delta components, and support an arbitrary number of RGBA textures. Built-in materials include smooth and microfacet metals, smooth and microfacet Fresnel dielectrics (glass), diffuse transmission, <a href="https://disney-animation.s3.amazonaws.com/library/s2012_pbs_disney_brdf_notes_v2.pdf">Disney's Principled BRDF</a>, and <a href="https://disney-animation.s3.amazonaws.com/uploads/production/publication_asset/152/asset/eurographics2016Fur_Smaller.pdf">Disney's Hair BSDF</a>.</p>
+<p>Dino supports materials using a <a href="https://github.com/mitsuba-renderer/mitsuba">Mitsuba</a>-like eval/sample/pdf interface. BSDFs can contain both smooth and Dirac delta components, and support an arbitrary number of RGBA textures. Built-in materials include smooth and microfacet metals, smooth and microfacet Fresnel dielectrics (glass), diffuse transmission, <a href="https://blog.selfshadow.com/publications/s2012-shading-course/burley/s2012_pbs_disney_brdf_notes_v3.pdf">Disney's Principled</a> <a href="https://blog.selfshadow.com/publications/s2015-shading-course/burley/s2015_pbs_disney_bsdf_notes.pdf">BSDF</a>, and <a href="https://disney-animation.s3.amazonaws.com/uploads/production/publication_asset/152/asset/eurographics2016Fur_Smaller.pdf">Disney's Hair BSDF</a>.</p>
 
 <h4>Other Plugins</h4>
 
@@ -97,11 +97,11 @@
 <figure>
     <div class="slider" style="max-width: 720px;">
         <div class="leftImage">
-            <img src="/projects/dino/dragon_white.jpg" alt="Left Image: Random. Comparison between random Cranley-Patterson rotations and blue noise dithering at 1 sample per pixel. The dithered image appears more converged at low sample counts." />
-            <span class="label whiteLabel">Random</span>
+            <img src="/projects/dino/dragon_white.jpg" alt="Left Image: Uncorrelated. Comparison between uncorrelated Cranley-Patterson rotations and blue noise dithering at 1 sample per pixel. Dithering makes the image appears more converged at low sample counts." />
+            <span class="label whiteLabel">Uncorrelated</span>
         </div>
         <div class="rightImage">
-            <img src="/projects/dino/dragon_blue.jpg" alt="Right Image: Blue Noise. Comparison between random Cranley-Patterson rotations and blue noise dithering at 1 sample per pixel. The dithered image appears more converged at low sample counts." />
+            <img src="/projects/dino/dragon_blue.jpg" alt="Right Image: Blue Noise. Comparison between uncorrelated Cranley-Patterson rotations and blue noise dithering at 1 sample per pixel. Dithering makes the image appears more converged at low sample counts." />
             <span class="label whiteLabel">Blue Noise</span>
         </div>
         <div class="handle whiteHandle">
@@ -111,7 +111,7 @@
             <div class="rightArrow"></div>
         </div>
     </div>
-    <figcaption>Comparison between random Cranley-Patterson rotations and blue noise dithering at 1 sample per pixel. The dithered image appears more converged at low sample counts.</figcaption>
+    <figcaption>Comparison between uncorrelated Cranley-Patterson rotations and blue noise dithering at 1 sample per pixel. Dithering makes the image appears more converged at low sample counts.</figcaption>
 </figure>
 
         </main>
