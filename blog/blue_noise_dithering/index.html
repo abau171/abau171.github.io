@@ -9,7 +9,7 @@
         <meta property="og:title" content="Andrew Bauer - Blue Noise Dithering" />
         <meta property="og:description" content="Error is usually distributed in image space with white noise, but we can dither pixels using blue noise textures to reduce perceptual error." />
         <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://abau.io/blog/blue_noise_dithering" />
+        <meta property="og:url" content="https://abau.io/blog/blue_noise_dithering/" />
         <meta property="og:image" content="https://abau.io/blog/blue_noise_dithering/thumbnail2.jpg" />
         <link rel="icon" type="image/png" href="/img/favicon.png">
         <script async src="https://www.googletagmanager.com/gtag/js?id=UA-170359979-1"></script>
@@ -85,7 +85,7 @@
 
 <p>Wow. It looks terrible. What happened?</p>
 
-<p>It's actually not too difficult to understand why this happens. Since we're feeding the same 2D sample to the BSDF sampling function in every pixel, all paths which bounce off a flat, diffuse surface like a wall end up going in <em>exactly</em> the same direction. The largest of the blocky patches on the walls are where the paths bounce just once, and the bounce direction happens to line up with the top light source. The smaller patches are from further bouncing, and much of the noise comes from the dragon which decorrelating things a bit with its curved surface since light no longer bounces in quite the same direction.</p>
+<p>It's actually not too difficult to understand why this happens. Since we're feeding the same 2D sample to the BSDF sampling function in every pixel, all paths which bounce off a flat, diffuse surface like a wall end up going in <em>exactly</em> the same direction. The largest of the blocky patches on the walls are where the paths bounce just once, and the bounce direction happens to line up with the top light source. The smaller patches are from further bouncing, and much of the noise comes from the dragon which decorrelates things a bit with its curved surface since light no longer bounces in quite the same direction.</p>
 
 <p>It's important to note that although this image looks really bad compared to the first noisy render, images produced with either method will have exactly the same error when compared against the reference image, at least on average. In fact, given enough time the constant-rotation image will converge to the reference just as the random-rotation image would! Don't believe me? See for yourself below.</p>
 
@@ -113,74 +113,74 @@
 
 <p>I told you it was easy! The only issue is that the energy is technically a function over an infinite number of points, but the contributions drop off with distance so using a \(9\times9\) window around the target pixels is sufficient. Here's all the code you need to generate a 2D blue noise texture<sup class="footnote-ref" id="fnref-3"><a href="#fn-3">3</a></sup>:</p>
 
-<div class="codehilite"><pre><span></span><code><span class="kt">float</span> <span class="nf">energy</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">glm</span><span class="o">::</span><span class="n">vec2</span><span class="o">&gt;&amp;</span> <span class="n">buffer</span><span class="p">,</span> <span class="n">glm</span><span class="o">::</span><span class="n">ivec2</span> <span class="n">a</span><span class="p">)</span>
-<span class="p">{</span>
-    <span class="kt">int</span> <span class="n">ia</span> <span class="o">=</span> <span class="n">a</span><span class="p">.</span><span class="n">y</span> <span class="o">*</span> <span class="n">BLUE_NOISE_DIM</span> <span class="o">+</span> <span class="n">a</span><span class="p">.</span><span class="n">x</span><span class="p">;</span>
+<div class="codehilite"><pre><span></span><code><span class="kt">float</span><span class="w"> </span><span class="nf">energy</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">glm</span><span class="o">::</span><span class="n">vec2</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">buffer</span><span class="p">,</span><span class="w"> </span><span class="n">glm</span><span class="o">::</span><span class="n">ivec2</span><span class="w"> </span><span class="n">a</span><span class="p">)</span><span class="w"></span>
+<span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">ia</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">a</span><span class="p">.</span><span class="n">y</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">BLUE_NOISE_DIM</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">a</span><span class="p">.</span><span class="n">x</span><span class="p">;</span><span class="w"></span>
 
-    <span class="c1">// Loop over 9x9 region around target pixel.</span>
-    <span class="kt">float</span> <span class="n">totalEnergy</span> <span class="o">=</span> <span class="mf">0.0f</span><span class="p">;</span>
-    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">dy</span> <span class="o">=</span> <span class="o">-</span><span class="mi">4</span><span class="p">;</span> <span class="n">dy</span> <span class="o">&lt;=</span> <span class="mi">4</span><span class="p">;</span> <span class="n">dy</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
-        <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">dx</span> <span class="o">=</span> <span class="o">-</span><span class="mi">4</span><span class="p">;</span> <span class="n">dx</span> <span class="o">&lt;=</span> <span class="mi">4</span><span class="p">;</span> <span class="n">dx</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
-            <span class="k">if</span> <span class="p">(</span><span class="n">dx</span> <span class="o">==</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="n">dy</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="k">continue</span><span class="p">;</span>
+<span class="w">    </span><span class="c1">// Loop over 9x9 region around target pixel.</span>
+<span class="w">    </span><span class="kt">float</span><span class="w"> </span><span class="n">totalEnergy</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.0f</span><span class="p">;</span><span class="w"></span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">dy</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">-4</span><span class="p">;</span><span class="w"> </span><span class="n">dy</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">4</span><span class="p">;</span><span class="w"> </span><span class="n">dy</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">dx</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">-4</span><span class="p">;</span><span class="w"> </span><span class="n">dx</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">4</span><span class="p">;</span><span class="w"> </span><span class="n">dx</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">dx</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">dy</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="k">continue</span><span class="p">;</span><span class="w"></span>
 
-            <span class="c1">// Find coordinates of second pixel, wrapping if necessary.</span>
-            <span class="n">glm</span><span class="o">::</span><span class="n">ivec2</span> <span class="n">b</span><span class="p">(</span>
-                <span class="p">(</span><span class="n">a</span><span class="p">.</span><span class="n">x</span> <span class="o">+</span> <span class="n">dx</span> <span class="o">+</span> <span class="n">BLUE_NOISE_DIM</span><span class="p">)</span> <span class="o">%</span> <span class="n">BLUE_NOISE_DIM</span><span class="p">,</span>
-                <span class="p">(</span><span class="n">a</span><span class="p">.</span><span class="n">y</span> <span class="o">+</span> <span class="n">dy</span> <span class="o">+</span> <span class="n">BLUE_NOISE_DIM</span><span class="p">)</span> <span class="o">%</span> <span class="n">BLUE_NOISE_DIM</span><span class="p">);</span>
-            <span class="kt">int</span> <span class="n">ib</span> <span class="o">=</span> <span class="n">b</span><span class="p">.</span><span class="n">y</span> <span class="o">*</span> <span class="n">BLUE_NOISE_DIM</span> <span class="o">+</span> <span class="n">b</span><span class="p">.</span><span class="n">x</span><span class="p">;</span>
+<span class="w">            </span><span class="c1">// Find coordinates of second pixel, wrapping if necessary.</span>
+<span class="w">            </span><span class="n">glm</span><span class="o">::</span><span class="n">ivec2</span><span class="w"> </span><span class="n">b</span><span class="p">(</span><span class="w"></span>
+<span class="w">                </span><span class="p">(</span><span class="n">a</span><span class="p">.</span><span class="n">x</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">dx</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">BLUE_NOISE_DIM</span><span class="p">)</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="n">BLUE_NOISE_DIM</span><span class="p">,</span><span class="w"></span>
+<span class="w">                </span><span class="p">(</span><span class="n">a</span><span class="p">.</span><span class="n">y</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">dy</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">BLUE_NOISE_DIM</span><span class="p">)</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="n">BLUE_NOISE_DIM</span><span class="p">);</span><span class="w"></span>
+<span class="w">            </span><span class="kt">int</span><span class="w"> </span><span class="n">ib</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">b</span><span class="p">.</span><span class="n">y</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">BLUE_NOISE_DIM</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">b</span><span class="p">.</span><span class="n">x</span><span class="p">;</span><span class="w"></span>
 
-            <span class="c1">// Add to total energy using energy function from the paper.</span>
-            <span class="c1">// This is the 2D case: d = 2 (optimized out)</span>
-            <span class="c1">// Use recommended parameters:</span>
-            <span class="c1">//     sigma_i = 2.1</span>
-            <span class="c1">//     sigma_s = 1.0 (optimized out)</span>
-            <span class="n">totalEnergy</span> <span class="o">+=</span> <span class="n">std</span><span class="o">::</span><span class="n">exp</span><span class="p">(</span>
-                <span class="o">-</span><span class="n">glm</span><span class="o">::</span><span class="n">length2</span><span class="p">(</span><span class="n">glm</span><span class="o">::</span><span class="n">vec2</span><span class="p">(</span><span class="n">dx</span><span class="p">,</span> <span class="n">dy</span><span class="p">))</span> <span class="o">/</span> <span class="p">(</span><span class="mf">2.1f</span> <span class="o">*</span> <span class="mf">2.1f</span><span class="p">)</span>
-                <span class="o">-</span> <span class="n">glm</span><span class="o">::</span><span class="n">distance</span><span class="p">(</span><span class="n">buffer</span><span class="p">[</span><span class="n">ia</span><span class="p">],</span> <span class="n">buffer</span><span class="p">[</span><span class="n">ib</span><span class="p">]));</span>
-        <span class="p">}</span>
-    <span class="p">}</span>
+<span class="w">            </span><span class="c1">// Add to total energy using energy function from the paper.</span>
+<span class="w">            </span><span class="c1">// This is the 2D case: d = 2 (optimized out)</span>
+<span class="w">            </span><span class="c1">// Use recommended parameters:</span>
+<span class="w">            </span><span class="c1">//     sigma_i = 2.1</span>
+<span class="w">            </span><span class="c1">//     sigma_s = 1.0 (optimized out)</span>
+<span class="w">            </span><span class="n">totalEnergy</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">exp</span><span class="p">(</span><span class="w"></span>
+<span class="w">                </span><span class="o">-</span><span class="n">glm</span><span class="o">::</span><span class="n">length2</span><span class="p">(</span><span class="n">glm</span><span class="o">::</span><span class="n">vec2</span><span class="p">(</span><span class="n">dx</span><span class="p">,</span><span class="w"> </span><span class="n">dy</span><span class="p">))</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="p">(</span><span class="mf">2.1f</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">2.1f</span><span class="p">)</span><span class="w"></span>
+<span class="w">                </span><span class="o">-</span><span class="w"> </span><span class="n">glm</span><span class="o">::</span><span class="n">distance</span><span class="p">(</span><span class="n">buffer</span><span class="p">[</span><span class="n">ia</span><span class="p">],</span><span class="w"> </span><span class="n">buffer</span><span class="p">[</span><span class="n">ib</span><span class="p">]));</span><span class="w"></span>
+<span class="w">        </span><span class="p">}</span><span class="w"></span>
+<span class="w">    </span><span class="p">}</span><span class="w"></span>
 
-    <span class="k">return</span> <span class="n">totalEnergy</span><span class="p">;</span>
-<span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">totalEnergy</span><span class="p">;</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 
-<span class="kt">void</span> <span class="nf">minimizeEnergy</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">glm</span><span class="o">::</span><span class="n">vec2</span><span class="o">&gt;&amp;</span> <span class="n">buffer</span><span class="p">)</span>
-<span class="p">{</span>
-    <span class="c1">// Try to swap pixels for many iterations.</span>
-    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">NUM_ITERATIONS</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+<span class="kt">void</span><span class="w"> </span><span class="nf">minimizeEnergy</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">glm</span><span class="o">::</span><span class="n">vec2</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">buffer</span><span class="p">)</span><span class="w"></span>
+<span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="c1">// Try to swap pixels for many iterations.</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">NUM_ITERATIONS</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
 
-        <span class="c1">// Select two random pixels.</span>
-        <span class="n">glm</span><span class="o">::</span><span class="n">ivec2</span> <span class="n">a</span><span class="p">(</span><span class="n">randomu</span><span class="p">()</span> <span class="o">%</span> <span class="n">BLUE_NOISE_DIM</span><span class="p">,</span> <span class="n">randomu</span><span class="p">()</span> <span class="o">%</span> <span class="n">BLUE_NOISE_DIM</span><span class="p">);</span>
-        <span class="n">glm</span><span class="o">::</span><span class="n">ivec2</span> <span class="n">b</span><span class="p">(</span><span class="n">randomu</span><span class="p">()</span> <span class="o">%</span> <span class="n">BLUE_NOISE_DIM</span><span class="p">,</span> <span class="n">randomu</span><span class="p">()</span> <span class="o">%</span> <span class="n">BLUE_NOISE_DIM</span><span class="p">);</span>
-        <span class="k">if</span> <span class="p">(</span><span class="n">a</span> <span class="o">==</span> <span class="n">b</span><span class="p">)</span> <span class="k">continue</span><span class="p">;</span>
+<span class="w">        </span><span class="c1">// Select two random pixels.</span>
+<span class="w">        </span><span class="n">glm</span><span class="o">::</span><span class="n">ivec2</span><span class="w"> </span><span class="n">a</span><span class="p">(</span><span class="n">randomu</span><span class="p">()</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="n">BLUE_NOISE_DIM</span><span class="p">,</span><span class="w"> </span><span class="n">randomu</span><span class="p">()</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="n">BLUE_NOISE_DIM</span><span class="p">);</span><span class="w"></span>
+<span class="w">        </span><span class="n">glm</span><span class="o">::</span><span class="n">ivec2</span><span class="w"> </span><span class="n">b</span><span class="p">(</span><span class="n">randomu</span><span class="p">()</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="n">BLUE_NOISE_DIM</span><span class="p">,</span><span class="w"> </span><span class="n">randomu</span><span class="p">()</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="n">BLUE_NOISE_DIM</span><span class="p">);</span><span class="w"></span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">a</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">b</span><span class="p">)</span><span class="w"> </span><span class="k">continue</span><span class="p">;</span><span class="w"></span>
 
-        <span class="c1">// Find pixel indices in buffer.</span>
-        <span class="kt">int</span> <span class="n">ia</span> <span class="o">=</span> <span class="n">a</span><span class="p">.</span><span class="n">y</span> <span class="o">*</span> <span class="n">BLUE_NOISE_DIM</span> <span class="o">+</span> <span class="n">a</span><span class="p">.</span><span class="n">x</span><span class="p">;</span>
-        <span class="kt">int</span> <span class="n">ib</span> <span class="o">=</span> <span class="n">b</span><span class="p">.</span><span class="n">y</span> <span class="o">*</span> <span class="n">BLUE_NOISE_DIM</span> <span class="o">+</span> <span class="n">b</span><span class="p">.</span><span class="n">x</span><span class="p">;</span>
+<span class="w">        </span><span class="c1">// Find pixel indices in buffer.</span>
+<span class="w">        </span><span class="kt">int</span><span class="w"> </span><span class="n">ia</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">a</span><span class="p">.</span><span class="n">y</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">BLUE_NOISE_DIM</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">a</span><span class="p">.</span><span class="n">x</span><span class="p">;</span><span class="w"></span>
+<span class="w">        </span><span class="kt">int</span><span class="w"> </span><span class="n">ib</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">b</span><span class="p">.</span><span class="n">y</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">BLUE_NOISE_DIM</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">b</span><span class="p">.</span><span class="n">x</span><span class="p">;</span><span class="w"></span>
 
-        <span class="c1">// Find energy before and after swapping pixels.</span>
-        <span class="kt">float</span> <span class="n">startEnergy</span> <span class="o">=</span> <span class="n">energy</span><span class="p">(</span><span class="n">buffer</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span> <span class="o">+</span> <span class="n">energy</span><span class="p">(</span><span class="n">buffer</span><span class="p">,</span> <span class="n">b</span><span class="p">);</span>
-        <span class="n">std</span><span class="o">::</span><span class="n">swap</span><span class="p">(</span><span class="n">buffer</span><span class="p">[</span><span class="n">ia</span><span class="p">],</span> <span class="n">buffer</span><span class="p">[</span><span class="n">ib</span><span class="p">]);</span>
-        <span class="kt">float</span> <span class="n">endEnergy</span> <span class="o">=</span> <span class="n">energy</span><span class="p">(</span><span class="n">buffer</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span> <span class="o">+</span> <span class="n">energy</span><span class="p">(</span><span class="n">buffer</span><span class="p">,</span> <span class="n">b</span><span class="p">);</span>
+<span class="w">        </span><span class="c1">// Find energy before and after swapping pixels.</span>
+<span class="w">        </span><span class="kt">float</span><span class="w"> </span><span class="n">startEnergy</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">energy</span><span class="p">(</span><span class="n">buffer</span><span class="p">,</span><span class="w"> </span><span class="n">a</span><span class="p">)</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">energy</span><span class="p">(</span><span class="n">buffer</span><span class="p">,</span><span class="w"> </span><span class="n">b</span><span class="p">);</span><span class="w"></span>
+<span class="w">        </span><span class="n">std</span><span class="o">::</span><span class="n">swap</span><span class="p">(</span><span class="n">buffer</span><span class="p">[</span><span class="n">ia</span><span class="p">],</span><span class="w"> </span><span class="n">buffer</span><span class="p">[</span><span class="n">ib</span><span class="p">]);</span><span class="w"></span>
+<span class="w">        </span><span class="kt">float</span><span class="w"> </span><span class="n">endEnergy</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">energy</span><span class="p">(</span><span class="n">buffer</span><span class="p">,</span><span class="w"> </span><span class="n">a</span><span class="p">)</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">energy</span><span class="p">(</span><span class="n">buffer</span><span class="p">,</span><span class="w"> </span><span class="n">b</span><span class="p">);</span><span class="w"></span>
 
-        <span class="c1">// If the energy was lower before the swap, then swap back.</span>
-        <span class="k">if</span> <span class="p">(</span><span class="n">startEnergy</span> <span class="o">&lt;</span> <span class="n">endEnergy</span><span class="p">)</span> <span class="p">{</span>
-            <span class="n">std</span><span class="o">::</span><span class="n">swap</span><span class="p">(</span><span class="n">buffer</span><span class="p">[</span><span class="n">ia</span><span class="p">],</span> <span class="n">buffer</span><span class="p">[</span><span class="n">ib</span><span class="p">]);</span>
-        <span class="p">}</span>
-    <span class="p">}</span>
-<span class="p">}</span>
+<span class="w">        </span><span class="c1">// If the energy was lower before the swap, then swap back.</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">startEnergy</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">endEnergy</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">            </span><span class="n">std</span><span class="o">::</span><span class="n">swap</span><span class="p">(</span><span class="n">buffer</span><span class="p">[</span><span class="n">ia</span><span class="p">],</span><span class="w"> </span><span class="n">buffer</span><span class="p">[</span><span class="n">ib</span><span class="p">]);</span><span class="w"></span>
+<span class="w">        </span><span class="p">}</span><span class="w"></span>
+<span class="w">    </span><span class="p">}</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 
-<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">glm</span><span class="o">::</span><span class="n">vec2</span><span class="o">&gt;</span> <span class="n">generateBlueNoise</span><span class="p">()</span>
-<span class="p">{</span>
-    <span class="c1">// Initialize the texture with white noise.</span>
-    <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">glm</span><span class="o">::</span><span class="n">vec2</span><span class="o">&gt;</span> <span class="n">buffer</span><span class="p">(</span><span class="n">BLUE_NOISE_DIM</span> <span class="o">*</span> <span class="n">BLUE_NOISE_DIM</span><span class="p">);</span>
-    <span class="k">for</span> <span class="p">(</span><span class="n">glm</span><span class="o">::</span><span class="n">vec2</span><span class="o">&amp;</span> <span class="nl">val</span> <span class="p">:</span> <span class="n">buffer</span><span class="p">)</span> <span class="p">{</span>
-        <span class="n">val</span> <span class="o">=</span> <span class="n">glm</span><span class="o">::</span><span class="n">vec2</span><span class="p">(</span><span class="n">randomf</span><span class="p">(),</span> <span class="n">randomf</span><span class="p">());</span>
-    <span class="p">}</span>
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">glm</span><span class="o">::</span><span class="n">vec2</span><span class="o">&gt;</span><span class="w"> </span><span class="n">generateBlueNoise</span><span class="p">()</span><span class="w"></span>
+<span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="c1">// Initialize the texture with white noise.</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">glm</span><span class="o">::</span><span class="n">vec2</span><span class="o">&gt;</span><span class="w"> </span><span class="n">buffer</span><span class="p">(</span><span class="n">BLUE_NOISE_DIM</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">BLUE_NOISE_DIM</span><span class="p">);</span><span class="w"></span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">glm</span><span class="o">::</span><span class="n">vec2</span><span class="o">&amp;</span><span class="w"> </span><span class="nl">val</span> <span class="p">:</span><span class="w"> </span><span class="n">buffer</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="n">val</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">glm</span><span class="o">::</span><span class="n">vec2</span><span class="p">(</span><span class="n">randomf</span><span class="p">(),</span><span class="w"> </span><span class="n">randomf</span><span class="p">());</span><span class="w"></span>
+<span class="w">    </span><span class="p">}</span><span class="w"></span>
 
-    <span class="c1">// Minimize energy and return the resulting blue noise texture.</span>
-    <span class="n">minimizeEnergy</span><span class="p">(</span><span class="n">buffer</span><span class="p">);</span>
-    <span class="k">return</span> <span class="n">buffer</span><span class="p">;</span>
-<span class="p">}</span>
+<span class="w">    </span><span class="c1">// Minimize energy and return the resulting blue noise texture.</span>
+<span class="w">    </span><span class="n">minimizeEnergy</span><span class="p">(</span><span class="n">buffer</span><span class="p">);</span><span class="w"></span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">buffer</span><span class="p">;</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 </code></pre></div>
 
 <p>Dino uses the paper's recommended texture size (\(128\times128\), so <code>BLUE_NOISE_DIM = 128</code>), and minimizes the energy for about 4,000,000 iterations<sup class="footnote-ref" id="fnref-4"><a href="#fn-4">4</a></sup>. Results are shown below.</p>
@@ -256,7 +256,7 @@
     <figcaption>Close-up of Spring's head using 4 samples per pixel.</figcaption>
 </figure>
 
-<p>This is an even bigger improvement than with the dragons! Unforunately, blue noise dithering can't really help out when a lot of indirect bounces are needed as with Spring's hair. Also, the benefits tend to disappear when you try to use more than just a few samples per pixel. Still, this can be a useful technique for eg. cleaning up early progressive renders, especially since denoisers can perform better when blue noise patterns are used.</p>
+<p>This is an even bigger improvement than with the dragons! Unfortunately, blue noise dithering can't really help out when a lot of indirect bounces are needed as with Spring's hair. Also, the benefits tend to disappear when you try to use more than just a few samples per pixel. Still, this can be a useful technique eg. for cleaning up early progressive renders, especially since denoisers can perform better when blue noise patterns are used.</p>
 
 <h1>Conclusion</h1>
 
@@ -290,6 +290,6 @@
 </div>
 
         </main>
-        <footer>&copy; 2020 Andrew Bauer</footer>
+        <footer><span class="githash">00685809</span> &copy; 2021 Andrew Bauer</footer>
     </body>
 </html>
